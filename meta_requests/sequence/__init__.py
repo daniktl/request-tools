@@ -1,9 +1,8 @@
-import time
 from http import HTTPStatus
 
 from tqdm import tqdm
 
-from meta_requests import MetaRequest, requests
+from meta_requests import MetaRequest
 from meta_requests.decorators import disable_warnings
 
 
@@ -19,7 +18,7 @@ class MetaRequestSequence(MetaRequest):
 
     @disable_warnings
     def action(self):
-        self.logger.info(f"Starting sequence process for the provided urls...")
+        self.logger.info("Starting sequence process for the provided urls...")
         bar = tqdm(self.urls * self.iterations)
         for url in bar:
             try:
@@ -31,5 +30,3 @@ class MetaRequestSequence(MetaRequest):
                 bar.set_description(f"SUCCESS: Request {url} responded with the status code {self._last_response.status_code}")
             except Exception as exp:
                 bar.set_description(f"FAILED: Request {url} failed with {exp.__class__.__name__}")
-
-

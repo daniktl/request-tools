@@ -3,7 +3,7 @@ import time
 
 from tqdm import tqdm
 
-from meta_requests import MetaRequest, requests
+from meta_requests import MetaRequest
 from meta_requests.decorators import disable_warnings
 
 

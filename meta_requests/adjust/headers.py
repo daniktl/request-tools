@@ -1,4 +1,4 @@
-from meta_requests import MetaRequest, requests
+from meta_requests import MetaRequest
 
 
 class MetaRequestAdjustHeaders(MetaRequest):
