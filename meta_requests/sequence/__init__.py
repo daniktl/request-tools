@@ -1,5 +1,3 @@
-from http import HTTPStatus
-
 from tqdm import tqdm
 
 from meta_requests import MetaRequest
@@ -25,8 +23,6 @@ class MetaRequestSequence(MetaRequest):
                 self._last_response = self.session.request(
                     self.method.upper(), url=url, headers=self.headers, proxies=self.proxies
                 )
-                if self._last_response.status_code != HTTPStatus.OK:
-                    self.logger.warning(f"Request {url} responded with the status code {self._last_response.status_code}.")
-                bar.set_description(f"SUCCESS: Request {url} responded with the status code {self._last_response.status_code}")
+                self.check_request_is_ok(self._last_response)
             except Exception as exp:
-                bar.set_description(f"FAILED: Request {url} failed with {exp.__class__.__name__}")
+                self.logger.error(f"FAILED: Request {url} failed with {exp.__class__.__name__}")

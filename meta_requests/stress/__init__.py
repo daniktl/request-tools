@@ -32,5 +32,3 @@ class MetaRequestStressTest(MetaRequest):
 
             if self.sleep_time:
                 time.sleep(random.uniform(0, self.sleep_time))
-
-
