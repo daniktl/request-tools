@@ -1,5 +1,5 @@
-from functools import wraps
 import warnings
+from functools import wraps
 
 
 def disable_warnings(func):

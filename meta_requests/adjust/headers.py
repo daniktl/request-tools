@@ -8,16 +8,17 @@ class MetaRequestAdjustHeaders(MetaRequest):
 
     def action(self):
         self.logger.info(f"Starting process for the {self.url}")
-        headers = {}
         for i, header in enumerate(self.headers.keys(), start=1):
             self.logger.info(f"Trying to send {i} headers")
-            headers[header] = self.headers[header]
+            headers = {k: v for k, v in list(self.headers.items())[:i]}
+            self.logger.warning(f"{self.url}, {self.body}, {headers}")
             self._last_response = self.session.request(
-                self.method.upper(),
+                method=self.method.upper(),
                 url=self.url,
+                data=self.body,
                 headers=headers,
+                cookies=self.cookies,
                 proxies=self.proxies
             )
-            if self._last_response.ok:
-                self.logger.info(f"Found working set of headers: {headers}")
+            if self.check_request_is_ok(self._last_response):
                 break

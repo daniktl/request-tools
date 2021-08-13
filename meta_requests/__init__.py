@@ -1,63 +1,62 @@
 import logging
+import random
 import sys
 from typing import Dict, List, Optional
 
-import requests
+from requests import Response, Session
+from requests.cookies import RequestsCookieJar
 
 from meta_requests.config import Config
 from meta_requests.utils import response_detect_blocking_messages
-
-
-class ProxyNotEnoughParamsError(Exception):
-    pass
-
-
-class BadUrlError(Exception):
-    pass
-
-
-class NoLastResponseError(Exception):
-    pass
+from meta_requests.utils.exceptions import BadUrlError, ProxyNotEnoughParamsError, NoLastResponseError
 
 
 class MetaRequest:
+    """Base Meta Request class to initiate all basic methods
+     to initiate request with required parameters: proxies, cookies, headers and etc.
+     """
+
     url: str = None
-    proxies: dict = None
+    proxy_pool: List[Dict[str, str]] = None
     _initial_headers: list = None
+    _initial_cookies: list = None
     headers: dict = None
-    additional_proxy: dict = {}
-    logger: logging.Logger
+    cookies: RequestsCookieJar = None
+    logger: logging.Logger = None
     blocking_messages: List[str] = []
+    _last_response: Optional[Response] = None
+    save_response_path: str = None
 
-    _last_response: Optional[requests.Response] = None
-    save_response_path: str
     _default_save_response_path = "request_adjust.html"
-
-    exclude_headers = ["cookie"]
+    exclude_headers = ["cookie"]  # cookies has to be initiated as cookies, not headers attribute
 
     def __init__(
             self,
             url: str,
             method: str = "GET",
-            proxies: dict = None,
+            body: str = None,
+            proxy_pool: List[Dict] = None,
             save_response_path: str = None,
-    ):
-        if "http" not in url:
+            blocking_messages: Optional[List] = None,
+    ) -> None:
+        if not url.startswith("http"):
             raise BadUrlError
         self.url = url
         self.method = method
-        self.proxies = proxies
+        self.body = body
+        self.proxy_pool = proxy_pool or []
         self.save_response_path = save_response_path or self._default_save_response_path
+        self.blocking_messages = blocking_messages or []
         self._init_request_session()
         self._init_logger()
 
-    def _init_request_session(self):
+    def _init_request_session(self) -> None:
         """Create session and set session params based on configuration"""
-        self.session = requests.Session()
+        self.session = Session()
         self.session.verify = Config.allow_insecure_connections  # for proxies using verify could raise SSLError
-        self.session.proxies = self.proxies
+        self.session.proxies = self.get_proxy()
 
-    def _init_logger(self):
+    def _init_logger(self) -> None:
         """Initialize logger with output to the stdout"""
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -68,7 +67,11 @@ class MetaRequest:
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
-    def add_proxy(
+    def get_proxy(self) -> Optional[Dict]:
+        """Get random proxy from the proxy pool if any proxy was added"""
+        return random.choice(self.proxy_pool) if self.proxy_pool else None
+
+    def add_authenticated_proxy(
             self,
             host: str,
             port: int,
@@ -76,25 +79,36 @@ class MetaRequest:
             password: str = None,
             token: str = None,
             proxy_headers: Dict[str, str] = None
-    ):
-        """Generate proxy config based on proxy details and credentials and add it to the session."""
-        if not (username and password) and not token:
+    ) -> None:
+        """Generate proxy config based on proxy details and credentials and add it to the session.
+
+        :param host: proxy provider host
+        :param port: proxy provider port
+        :param username: your proxy credentials (1) - username
+        :param password: your proxy credentials (1) - password
+        :param token: your proxy credentials (2) - token
+        :param proxy_headers: additional, proxy-specific headers
+        """
+        if not (username and password or token):
             raise ProxyNotEnoughParamsError
         if username and password:
             proxy_auth = f"{username}:{password}"
         else:
             proxy_auth = f"{token}:"
         proxy_string = f"http://{proxy_auth}@{host}:{port}"
-        self.proxies = {
+        self.proxy_pool.append({
             "http": proxy_string,
             "https": proxy_string
-        }
+        })
         if isinstance(proxy_headers, dict):
-            self.additional_proxy.update(proxy_headers)
+            self.headers.update(proxy_headers)
         self.logger.info(f"Proxy {host} has been added to the session.")
 
-    def add_initial_headers(self, initial_headers: list):
-        """Add headers and convert them from the browser format to requests format"""
+    def set_initial_headers(self, initial_headers: list) -> None:
+        """Add headers and convert them from the HAR to the python requests format
+
+        :param initial_headers: HAR formatted headers
+        """
         self._initial_headers = initial_headers
         self.headers = {}
         for header in initial_headers:
@@ -103,26 +117,56 @@ class MetaRequest:
                 header_name = header_name[1:] if header_name.startswith(":") else header_name
                 self.headers[header_name] = header["value"]
 
-    def set_headers(self, key, value):
+    def set_initial_cookies(self, initial_cookies: list) -> None:
+        """Add cookies and convert the from browser format to the dict object"""
+        self._initial_cookies = initial_cookies
+        self.cookies = RequestsCookieJar()
+        # converts HAR cookies to the CookieJar that Python requests module is using
+        for cookie in initial_cookies:
+            self.cookies.set(
+                name=cookie["name"], value=cookie["value"], domain=cookie.get("domain"), path=cookie.get("path"),
+                secure=cookie.get("secure"), rest={"HttpOnly": cookie["httpOnly"]}
+            )
+
+    def set_header(self, key, value):
         self.headers[key] = value
 
     def save_response(self):
+        """Method to save the last response to the file for further analytics"""
         if not self._last_response:
             raise NoLastResponseError
         with open(self.save_response_path, "w") as f:
             f.write(self._last_response.text)
         self.logger.info(f"Response saved to the {self.save_response_path}")
 
-    def action(self):
-        raise NotImplementedError
+    def action(self) -> None:
+        """Default action, that just making a single request to the target
+        """
+        self.logger.debug(f"{self.url}, {self.body}, {self.headers}")
+        self._last_response = self.session.request(
+            method=self.method.upper(),
+            url=self.url,
+            data=self.body,
+            headers=self.headers,
+            cookies=self.cookies,
+            proxies=self.get_proxy()
+        )
+        self.check_request_is_ok(self._last_response)
 
-    def check_request_is_ok(self, response: requests.Response) -> bool:
-        if not response.ok:
-            self.logger.warning(f"FAILED: Request returned status code {response.status_code}.")
-            return False
+    def check_request_is_ok(self, response: Response) -> bool:
+        """Method to detects whether the request was blocked.
+        Returns the "blocked" flag and add some logs.
+
+        :param response: response from the target
+
+        :return: the "blocked" flag
+        """
         detected_message = response_detect_blocking_messages(response.text, self.blocking_messages)
         if detected_message:
             self.logger.warning(f"FAILED: Request got blocked with a message {detected_message}.")
+            return False
+        if not response.ok:
+            self.logger.warning(f"FAILED: Request returned status code {response.status_code}.")
             return False
         self.logger.info(f"SUCCESS: Request passed with status code {response.status_code}")
         return True
