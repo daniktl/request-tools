@@ -9,4 +9,4 @@ def response_detect_blocking_messages(text: str, blocking_messages: List[str]) -
 
     :return: first detected blocking message if exists
     """
-    return next((message in text for message in blocking_messages), None)
+    return next((message for message in blocking_messages if message in text), None)

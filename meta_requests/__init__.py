@@ -1,12 +1,13 @@
 import logging
 import random
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from requests import Response, Session
 from requests.cookies import RequestsCookieJar
 
 from meta_requests.config import Config
+from meta_requests.utils import generate_proxy_dict
 from meta_requests.utils.decorators import disable_warnings
 from meta_requests.utils.exceptions import BadUrlError, ProxyNotEnoughParamsError, NoLastResponseError
 from meta_requests.utils.request import response_detect_blocking_messages
@@ -18,13 +19,13 @@ class MetaRequest:
      """
 
     url: str = None
-    proxy_pool: List[Dict[str, str]] = None
+    proxy_pool: List[str] = None
     _initial_headers: list = None
     _initial_cookies: list = None
     headers: dict = None
     cookies: RequestsCookieJar = None
     logger: logging.Logger = None
-    blocking_messages: List[str] = []
+    blocking_messages: List[str] = None
     _last_response: Optional[Response] = None
     save_response_path: str = None
 
@@ -36,7 +37,7 @@ class MetaRequest:
             url: str,
             method: str = "GET",
             body: str = None,
-            proxy_pool: List[Dict] = None,
+            proxy_pool: List[str] = None,
             save_response_path: str = None,
             blocking_messages: Optional[List] = None,
     ) -> None:
@@ -45,6 +46,8 @@ class MetaRequest:
         self.url = url
         self.method = method
         self.body = body
+        self.headers = {}
+        self.cookies = RequestsCookieJar()
         self.proxy_pool = proxy_pool or []
         self.save_response_path = save_response_path or self._default_save_response_path
         self.blocking_messages = blocking_messages or []
@@ -70,7 +73,7 @@ class MetaRequest:
 
     def get_proxy(self) -> Optional[Dict]:
         """Get random proxy from the proxy pool if any proxy was added"""
-        return random.choice(self.proxy_pool) if self.proxy_pool else None
+        return generate_proxy_dict(random.choice(self.proxy_pool)) if self.proxy_pool else None
 
     def add_authenticated_proxy(
             self,
@@ -97,10 +100,7 @@ class MetaRequest:
         else:
             proxy_auth = f"{token}:"
         proxy_string = f"http://{proxy_auth}@{host}:{port}"
-        self.proxy_pool.append({
-            "http": proxy_string,
-            "https": proxy_string
-        })
+        self.proxy_pool.append(proxy_string)
         if isinstance(proxy_headers, dict):
             self.headers.update(proxy_headers)
         self.logger.info(f"Proxy {host} has been added to the session.")
@@ -129,10 +129,10 @@ class MetaRequest:
                 secure=cookie.get("secure"), rest={"HttpOnly": cookie["httpOnly"]}
             )
 
-    def set_header(self, key, value):
+    def set_header(self, key: str, value: Union[str, int, None]) -> None:
         self.headers[key] = value
 
-    def save_response(self):
+    def save_response(self) -> None:
         """Method to save the last response to the file for further analytics"""
         if not self._last_response:
             raise NoLastResponseError
@@ -165,10 +165,10 @@ class MetaRequest:
         """
         detected_message = response_detect_blocking_messages(response.text, self.blocking_messages)
         if detected_message:
-            self.logger.warning(f"FAILED: Request got blocked with a message {detected_message}.")
+            self.logger.warning(f"FAILED: Request got blocked with a message: <{detected_message}>.")
             return False
         if not response.ok:
-            self.logger.warning(f"FAILED: Request returned status code {response.status_code}.")
+            self.logger.warning(f"FAILED: Request returned status code: {response.status_code}.")
             return False
-        self.logger.info(f"SUCCESS: Request passed with status code {response.status_code}")
+        self.logger.info(f"SUCCESS: Request passed with status code: {response.status_code}")
         return True

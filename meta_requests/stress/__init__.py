@@ -1,10 +1,10 @@
 import random
 import time
 
-from meta_requests.decorators import disable_warnings
 from tqdm import tqdm
 
 from meta_requests import MetaRequest
+from meta_requests.utils.decorators import disable_warnings
 
 
 class MetaRequestStressTest(MetaRequest):
@@ -25,7 +25,7 @@ class MetaRequestStressTest(MetaRequest):
         for i in bar:
             try:
                 self._last_response = self.session.request(
-                    self.method.upper(), url=self.url, headers=self.headers, proxies=self.proxies
+                    self.method.upper(), url=self.url, headers=self.headers, proxies=self.get_proxy()
                 )
                 bar.set_description(f"SUCCESS: Request {i} responded with the status code {self._last_response.status_code}")
             except Exception as exp:

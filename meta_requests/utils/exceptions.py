@@ -1,3 +1,7 @@
+class RequiredAttributeError(Exception):
+    pass
+
+
 class ProxyNotEnoughParamsError(Exception):
     pass
 
