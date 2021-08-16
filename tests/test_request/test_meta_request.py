@@ -5,7 +5,6 @@ from meta_requests.utils.exceptions import BadUrlError
 
 
 class TestMetaRequest:
-
     @staticmethod
     def test_request_action_is_ok(meta_request: MetaRequest):
         """Test to check if the MetaRequest initiates correctly"""
@@ -23,10 +22,7 @@ class TestMetaRequest:
         proxy_port = 8080
         proxy_token = "123"
         expected_url = f"http://{proxy_token}:@{proxy_host}:{proxy_port}"
-        expected_output = {
-            "http": expected_url,
-            "https": expected_url
-        }
+        expected_output = {"http": expected_url, "https": expected_url}
         meta_request.add_authenticated_proxy(host="xyz", port=8080, token="123")
         assert meta_request.get_proxy() == expected_output
 

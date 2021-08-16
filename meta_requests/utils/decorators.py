@@ -9,4 +9,5 @@ def disable_warnings(func):
             warnings.simplefilter("ignore")
             res = func(*args, **kwargs)
         return res
+
     return inner

@@ -1,7 +1,9 @@
 from typing import List, Optional
 
 
-def response_detect_blocking_messages(text: str, blocking_messages: List[str]) -> Optional[str]:
+def response_detect_blocking_messages(
+        text: str, blocking_messages: List[str]
+) -> Optional[str]:
     """Method to check whether any of blocking messages appears in the response text.
 
     :param text: response text

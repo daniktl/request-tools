@@ -12,8 +12,17 @@ class MetaRequestStressTest(MetaRequest):
     number_of_iterations: int
     sleep_time: int
 
-    def __init__(self, url: str, number_of_iterations: int = 100, sleep_time: int = None, *args, **kwargs):
-        kwargs.setdefault("method", "head")  # by default it send HEAD request to speed up the execution
+    def __init__(
+            self,
+            url: str,
+            number_of_iterations: int = 100,
+            sleep_time: int = None,
+            *args,
+            **kwargs,
+    ):
+        kwargs.setdefault(
+            "method", "head"
+        )  # by default it send HEAD request to speed up the execution
         super().__init__(url, *args, **kwargs)
         self.number_of_iterations = number_of_iterations
         self.sleep_time = sleep_time
@@ -25,11 +34,18 @@ class MetaRequestStressTest(MetaRequest):
         for i in bar:
             try:
                 self._last_response = self.session.request(
-                    self.method.upper(), url=self.url, headers=self.headers, proxies=self.get_proxy()
+                    self.method.upper(),
+                    url=self.url,
+                    headers=self.headers,
+                    proxies=self.get_proxy(),
                 )
-                bar.set_description(f"SUCCESS: Request {i} responded with the status code {self._last_response.status_code}")
+                bar.set_description(
+                    f"SUCCESS: Request {i} responded with the status code {self._last_response.status_code}"
+                )
             except Exception as exp:
-                bar.set_description(f"FAILED: Request {i} failed with {exp.__class__.__name__}")
+                bar.set_description(
+                    f"FAILED: Request {i} failed with {exp.__class__.__name__}"
+                )
 
             if self.sleep_time:
                 time.sleep(random.uniform(0, self.sleep_time))

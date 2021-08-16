@@ -9,14 +9,18 @@ from requests.cookies import RequestsCookieJar
 from meta_requests.config import Config
 from meta_requests.utils import generate_proxy_dict
 from meta_requests.utils.decorators import disable_warnings
-from meta_requests.utils.exceptions import BadUrlError, ProxyNotEnoughParamsError, NoLastResponseError
+from meta_requests.utils.exceptions import (
+    BadUrlError,
+    ProxyNotEnoughParamsError,
+    NoLastResponseError,
+)
 from meta_requests.utils.request import response_detect_blocking_messages
 
 
 class MetaRequest:
     """Base Meta Request class to initiate all basic methods
-     to initiate request with required parameters: proxies, cookies, headers and etc.
-     """
+    to initiate request with required parameters: proxies, cookies, headers and etc.
+    """
 
     url: str = None
     proxy_pool: List[str] = None
@@ -30,7 +34,9 @@ class MetaRequest:
     save_response_path: str = None
 
     _default_save_response_path = "request_adjust.html"
-    exclude_headers = ["cookie"]  # cookies has to be initiated as cookies, not headers attribute
+    exclude_headers = [
+        "cookie"
+    ]  # cookies has to be initiated as cookies, not headers attribute
 
     def __init__(
             self,
@@ -57,7 +63,9 @@ class MetaRequest:
     def _init_request_session(self) -> None:
         """Create session and set session params based on configuration"""
         self.session = Session()
-        self.session.verify = Config.allow_insecure_connections  # for proxies using verify could raise SSLError
+        self.session.verify = (
+            Config.allow_insecure_connections
+        )  # for proxies using verify could raise SSLError
         self.session.proxies = self.get_proxy()
 
     def _init_logger(self) -> None:
@@ -67,13 +75,19 @@ class MetaRequest:
 
         handler = logging.StreamHandler(sys.stdout)
         handler.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        )
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
 
     def get_proxy(self) -> Optional[Dict]:
         """Get random proxy from the proxy pool if any proxy was added"""
-        return generate_proxy_dict(random.choice(self.proxy_pool)) if self.proxy_pool else None
+        return (
+            generate_proxy_dict(random.choice(self.proxy_pool))
+            if self.proxy_pool
+            else None
+        )
 
     def add_authenticated_proxy(
             self,
@@ -82,7 +96,7 @@ class MetaRequest:
             username: str = None,
             password: str = None,
             token: str = None,
-            proxy_headers: Dict[str, str] = None
+            proxy_headers: Dict[str, str] = None,
     ) -> None:
         """Generate proxy config based on proxy details and credentials and add it to the session.
 
@@ -115,7 +129,9 @@ class MetaRequest:
         for header in initial_headers:
             if header["name"] not in self.exclude_headers:
                 header_name: str = header["name"]
-                header_name = header_name[1:] if header_name.startswith(":") else header_name
+                header_name = (
+                    header_name[1:] if header_name.startswith(":") else header_name
+                )
                 self.headers[header_name] = header["value"]
 
     def set_initial_cookies(self, initial_cookies: list) -> None:
@@ -125,8 +141,12 @@ class MetaRequest:
         # converts HAR cookies to the CookieJar that Python requests module is using
         for cookie in initial_cookies:
             self.cookies.set(
-                name=cookie["name"], value=cookie["value"], domain=cookie.get("domain"), path=cookie.get("path"),
-                secure=cookie.get("secure"), rest={"HttpOnly": cookie["httpOnly"]}
+                name=cookie["name"],
+                value=cookie["value"],
+                domain=cookie.get("domain"),
+                path=cookie.get("path"),
+                secure=cookie.get("secure"),
+                rest={"HttpOnly": cookie["httpOnly"]},
             )
 
     def set_header(self, key: str, value: Union[str, int, None]) -> None:
@@ -142,8 +162,7 @@ class MetaRequest:
 
     @disable_warnings
     def action(self) -> None:
-        """Default action, that just making a single request to the target
-        """
+        """Default action, that just making a single request to the target"""
         self.logger.debug(f"{self.url}, {self.body}, {self.headers}")
         self._last_response = self.session.request(
             method=self.method.upper(),
@@ -151,7 +170,7 @@ class MetaRequest:
             data=self.body,
             headers=self.headers,
             cookies=self.cookies,
-            proxies=self.get_proxy()
+            proxies=self.get_proxy(),
         )
         self.check_request_is_ok(self._last_response)
 
@@ -163,12 +182,20 @@ class MetaRequest:
 
         :return: the "blocked" flag
         """
-        detected_message = response_detect_blocking_messages(response.text, self.blocking_messages)
+        detected_message = response_detect_blocking_messages(
+            response.text, self.blocking_messages
+        )
         if detected_message:
-            self.logger.warning(f"FAILED: Request got blocked with a message: <{detected_message}>.")
+            self.logger.warning(
+                f"FAILED: Request got blocked with a message: <{detected_message}>."
+            )
             return False
         if not response.ok:
-            self.logger.warning(f"FAILED: Request returned status code: {response.status_code}.")
+            self.logger.warning(
+                f"FAILED: Request returned status code: {response.status_code}."
+            )
             return False
-        self.logger.info(f"SUCCESS: Request passed with status code: {response.status_code}")
+        self.logger.info(
+            f"SUCCESS: Request passed with status code: {response.status_code}"
+        )
         return True
