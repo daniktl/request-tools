@@ -1,10 +1,10 @@
 import random
 import time
 
+from meta_requests.decorators import disable_warnings
 from tqdm import tqdm
 
 from meta_requests import MetaRequest
-from meta_requests.decorators import disable_warnings
 
 
 class MetaRequestStressTest(MetaRequest):
@@ -13,6 +13,7 @@ class MetaRequestStressTest(MetaRequest):
     sleep_time: int
 
     def __init__(self, url: str, number_of_iterations: int = 100, sleep_time: int = None, *args, **kwargs):
+        kwargs.setdefault("method", "head")  # by default it send HEAD request to speed up the execution
         super().__init__(url, *args, **kwargs)
         self.number_of_iterations = number_of_iterations
         self.sleep_time = sleep_time
