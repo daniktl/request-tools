@@ -1,7 +1,7 @@
-from meta_requests.decorators import disable_warnings
 from tqdm import tqdm
 
 from meta_requests import MetaRequest
+from meta_requests.utils.decorators import disable_warnings
 
 
 class MetaRequestSequence(MetaRequest):
@@ -22,9 +22,14 @@ class MetaRequestSequence(MetaRequest):
         for url in bar:
             try:
                 self._last_response = self.session.request(
-                    self.method.upper(), url=url, headers=self.headers, proxies=self.proxies
+                    self.method.upper(),
+                    url=url,
+                    headers=self.headers,
+                    proxies=self.get_proxy(),
                 )
                 if self.check_request_is_ok(self._last_response):
                     second_iteration.append(url)
             except Exception as exp:
-                self.logger.error(f"FAILED: Request {url} failed with {exp.__class__.__name__}")
+                self.logger.error(
+                    f"FAILED: Request {url} failed with {exp.__class__.__name__}"
+                )
