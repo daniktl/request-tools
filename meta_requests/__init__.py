@@ -7,8 +7,9 @@ from requests import Response, Session
 from requests.cookies import RequestsCookieJar
 
 from meta_requests.config import Config
-from meta_requests.utils import response_detect_blocking_messages
+from meta_requests.utils.decorators import disable_warnings
 from meta_requests.utils.exceptions import BadUrlError, ProxyNotEnoughParamsError, NoLastResponseError
+from meta_requests.utils.request import response_detect_blocking_messages
 
 
 class MetaRequest:
@@ -139,6 +140,7 @@ class MetaRequest:
             f.write(self._last_response.text)
         self.logger.info(f"Response saved to the {self.save_response_path}")
 
+    @disable_warnings
     def action(self) -> None:
         """Default action, that just making a single request to the target
         """
